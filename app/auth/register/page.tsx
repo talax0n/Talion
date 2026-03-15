@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { signUp } from '@/lib/auth-client';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -11,6 +12,7 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -18,9 +20,20 @@ export default function RegisterPage() {
     if (!name || !email || !password) { setError('Please fill in all fields.'); return; }
     if (password.length < 8) { setError('Password must be at least 8 characters.'); return; }
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 700));
-    localStorage.setItem('talion_user', JSON.stringify({ email, name }));
-    router.push('/dashboard');
+    const { error } = await signUp.email({
+      email,
+      password,
+      name,
+      callbackURL: '/dashboard',
+    });
+    if (error) {
+      setError(error.message ?? 'Registration failed');
+      setLoading(false);
+      return;
+    }
+    setSuccess(true);
+    setLoading(false);
+    setTimeout(() => router.push('/dashboard'), 1500);
   }
 
   return (
@@ -81,18 +94,23 @@ export default function RegisterPage() {
             {error && (
               <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>
             )}
+            {success && (
+              <p className="text-sm text-green-700 bg-green-50 px-3 py-2 rounded-lg">
+                Account created! Check your email to confirm, or redirecting…
+              </p>
+            )}
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || success}
               className="w-full bg-indigo-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
             >
-              {loading ? 'Creating workspace…' : 'Create account'}
+              {loading ? 'Creating account…' : 'Create account'}
             </button>
           </form>
 
           <p className="text-xs text-gray-400 text-center mt-4">
-            Your data stays on your machine. No tracking.
+            Your data is secure.
           </p>
         </div>
 

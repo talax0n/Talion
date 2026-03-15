@@ -232,3 +232,76 @@ export function restoreVersion(pageId: string, versionId: string): Page | undefi
   saveStore(store);
   return store.pages[idx];
 }
+
+export function createWorkspace(partial: Partial<Workspace> = {}): Workspace {
+  const now = Date.now();
+  const name = partial.name || 'New Workspace';
+  const ws: Workspace = {
+    id: `ws-${now}`,
+    name,
+    slug: partial.slug || name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
+    ...partial,
+  };
+  const store = getStore();
+  store.workspaces.push(ws);
+  saveStore(store);
+  return ws;
+}
+
+export function updateWorkspace(id: string, updates: Partial<Pick<Workspace, 'name' | 'slug'>>): Workspace | undefined {
+  const store = getStore();
+  const idx = store.workspaces.findIndex((w) => w.id === id);
+  if (idx < 0) return undefined;
+  store.workspaces[idx] = { ...store.workspaces[idx], ...updates };
+  saveStore(store);
+  return store.workspaces[idx];
+}
+
+export function deleteWorkspace(id: string): void {
+  const store = getStore();
+  // Don't delete if it's the only workspace
+  if (store.workspaces.length <= 1) return;
+  store.workspaces = store.workspaces.filter((w) => w.id !== id);
+  // Move orphaned pages to the first remaining workspace
+  const firstWs = store.workspaces[0];
+  store.pages = store.pages.map((p) =>
+    p.workspaceId === id ? { ...p, workspaceId: firstWs.id } : p,
+  );
+  saveStore(store);
+}
+
+export function getActiveWorkspaceId(): string {
+  if (typeof window === 'undefined') return 'ws-1';
+  return localStorage.getItem('talion_active_workspace') ?? 'ws-1';
+}
+
+export function setActiveWorkspaceId(id: string): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem('talion_active_workspace', id);
+}
+
+export function getTagCounts(): Record<string, number> {
+  const pages = getPages();
+  const counts: Record<string, number> = {};
+  pages.forEach((p) => p.tags.forEach((t) => { counts[t] = (counts[t] ?? 0) + 1; }));
+  return counts;
+}
+
+export function getPagesByTags(tags: string[], mode: 'AND' | 'OR' = 'OR'): Page[] {
+  if (!tags.length) return getPages();
+  return getPages().filter((p) =>
+    mode === 'AND'
+      ? tags.every((t) => p.tags.includes(t))
+      : tags.some((t) => p.tags.includes(t)),
+  );
+}
+
+export function updatePageParent(pageId: string, newParentId: string | null): void {
+  const store = getStore();
+  const idx = store.pages.findIndex((p) => p.id === pageId);
+  if (idx < 0) return;
+  // Guard against circular reference
+  if (newParentId === pageId) return;
+  store.pages[idx] = { ...store.pages[idx], parentId: newParentId, updatedAt: new Date().toISOString() };
+  saveStore(store);
+}

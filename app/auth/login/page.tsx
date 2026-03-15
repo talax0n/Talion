@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { signIn } from '@/lib/auth-client';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,10 +17,18 @@ export default function LoginPage() {
     setError('');
     if (!email || !password) { setError('Please fill in all fields.'); return; }
     setLoading(true);
-    // Demo: any credentials work
-    await new Promise((r) => setTimeout(r, 600));
-    localStorage.setItem('talion_user', JSON.stringify({ email, name: email.split('@')[0] }));
+    const { error } = await signIn.email({
+      email,
+      password,
+      callbackURL: '/dashboard',
+    });
+    if (error) {
+      setError(error.message ?? 'Sign in failed');
+      setLoading(false);
+      return;
+    }
     router.push('/dashboard');
+    router.refresh();
   }
 
   return (
@@ -78,15 +87,9 @@ export default function LoginPage() {
           </form>
 
           <div className="mt-6 pt-6 border-t border-gray-100 text-center">
-            <button
-              onClick={() => {
-                localStorage.setItem('talion_user', JSON.stringify({ email: 'demo@talion.app', name: 'demo' }));
-                router.push('/dashboard');
-              }}
-              className="text-sm text-indigo-600 hover:text-indigo-500 font-medium"
-            >
-              Continue as demo user →
-            </button>
+            <Link href="/auth/register" className="text-sm text-indigo-600 hover:text-indigo-500 font-medium">
+              Create a free account →
+            </Link>
           </div>
         </div>
 
