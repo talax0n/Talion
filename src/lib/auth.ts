@@ -19,7 +19,7 @@ export const auth = betterAuth({
     }),
   ],
   callbacks: {
-    async session({ session, user }) {
+    async session({ session, user }: { session: any; user: any }) {
       // Sync user into profiles table on each session
       await prisma.profile.upsert({
         where: { id: user.id },
