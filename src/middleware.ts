@@ -1,13 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { auth } from '@/lib/auth'
 
-const publicPaths = [
-  '/login',
-  '/signup',
-  '/verify',
-  '/api/auth',
-]
+const publicPaths = ['/login', '/signup', '/verify', '/api/auth']
 
 function isPublicPath(pathname: string): boolean {
   return publicPaths.some((path) => pathname.startsWith(path))
@@ -16,7 +10,7 @@ function isPublicPath(pathname: string): boolean {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Allow public paths and workspace public pages
+  // Allow public paths
   if (isPublicPath(pathname)) {
     return NextResponse.next()
   }
@@ -26,12 +20,25 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Check session for protected routes
-  const session = await auth.api.getSession({
-    headers: request.headers,
-  })
+  // Check session via internal fetch — avoids importing pg/crypto in edge runtime
+  try {
+    const sessionUrl = new URL('/api/auth/get-session', request.url)
+    const sessionRes = await fetch(sessionUrl.toString(), {
+      headers: request.headers,
+    })
 
-  if (!session) {
+    if (!sessionRes.ok) {
+      throw new Error('Session fetch failed')
+    }
+
+    const session = await sessionRes.json()
+
+    if (!session?.user) {
+      const loginUrl = new URL('/login', request.url)
+      loginUrl.searchParams.set('callbackUrl', pathname)
+      return NextResponse.redirect(loginUrl)
+    }
+  } catch {
     const loginUrl = new URL('/login', request.url)
     loginUrl.searchParams.set('callbackUrl', pathname)
     return NextResponse.redirect(loginUrl)
