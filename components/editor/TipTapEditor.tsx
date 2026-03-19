@@ -27,6 +27,7 @@ interface TipTapEditorProps {
   onChange: (html: string) => void;
   placeholder?: string;
   editable?: boolean;
+  mode?: 'wysiwyg' | 'markdown';
 }
 
 interface SlashState {
@@ -86,10 +87,10 @@ export default function TipTapEditor({
   onChange,
   placeholder = 'Start writing… type / for commands',
   editable = true,
+  mode = 'wysiwyg',
 }: TipTapEditorProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editorWrapperRef = useRef<HTMLDivElement>(null);
-  const [showMarkdown, setShowMarkdown] = useState(false);
   const [slash, setSlash] = useState<SlashState>({
     active: false,
     position: null,
@@ -362,19 +363,6 @@ export default function TipTapEditor({
         </ToolbarButton>
 
         <div className="flex-1" />
-
-        <button
-          type="button"
-          onClick={() => setShowMarkdown((v) => !v)}
-          className={cn(
-            'text-xs px-2 py-1 rounded border transition-colors',
-            showMarkdown
-              ? 'border-indigo-200 bg-indigo-50 text-indigo-700'
-              : 'border-gray-200 text-gray-400 hover:bg-gray-50',
-          )}
-        >
-          {showMarkdown ? 'WYSIWYG' : 'Source'}
-        </button>
       </div>
     );
   }
@@ -390,15 +378,15 @@ export default function TipTapEditor({
       >
         {editable && renderToolbar()}
 
-        {showMarkdown ? (
+        {mode === 'markdown' ? (
           <textarea
             className="flex-1 w-full resize-none p-6 text-sm font-mono text-gray-700 placeholder-gray-300 outline-none bg-white leading-relaxed"
-            value={editor?.getHTML() ?? ''}
+            value={content}
             onChange={(e) => {
-              editor?.commands.setContent(e.target.value, { emitUpdate: false });
               onChange(e.target.value);
             }}
             spellCheck={false}
+            placeholder={placeholder}
           />
         ) : (
           <div className="flex-1 overflow-y-auto">

@@ -14,6 +14,7 @@ import {
   type Page,
   type Workspace,
 } from '@/lib/store';
+import { WorkspaceProvider } from '@/contexts/WorkspaceContext';
 import { SearchModal } from '@/components/SearchModal';
 import { signOut, useSession } from '@/lib/auth-client';
 import {
@@ -210,6 +211,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const activeDragPage = activeDragId ? pages.find((p) => p.id === activeDragId) : null;
 
   return (
+    <WorkspaceProvider>
     <div className="flex h-screen overflow-hidden">
       {/* Sidebar */}
       <aside
@@ -418,5 +420,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
+    </WorkspaceProvider>
   );
 }

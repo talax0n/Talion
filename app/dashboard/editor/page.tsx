@@ -4,17 +4,39 @@ import { Suspense } from 'react';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
-  getPage, savePage, createPage, saveVersion, getVersions, restoreVersion,
-  type Page, type PageVersion,
+  getPage,
+  savePage,
+  createPage,
+  saveVersion,
+  getVersions,
+  restoreVersion,
+  type Page,
+  type PageVersion,
 } from '@/lib/store';
 import TipTapEditor from '@/components/editor/TipTapEditor';
 
 type SaveState = 'saved' | 'saving' | 'unsaved';
 
+type EditorFields = {
+  page: Page | null;
+  title: string;
+  content: string;
+  tags: string[];
+  slug: string;
+  visibility: 'private' | 'public';
+  status: 'draft' | 'published' | 'archived';
+  versions: PageVersion[];
+};
+
 const TAGS_PLACEHOLDER = 'Add tag…';
 
 function slugify(text: string): string {
-  return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'untitled';
+  return (
+    text
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '') || 'untitled'
+  );
 }
 
 function timeAgo(iso: string): string {
@@ -28,51 +50,63 @@ function timeAgo(iso: string): string {
 }
 
 function countWords(html: string): number {
-  const text = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  const text = html
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
   return text ? text.split(' ').length : 0;
 }
 
-function EditorInner() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const pageId = searchParams.get('id');
+function initFields(pageId: string | null): EditorFields {
+  if (!pageId) {
+    return {
+      page: null,
+      title: '',
+      content: '',
+      tags: [],
+      slug: '',
+      visibility: 'private',
+      status: 'draft',
+      versions: [],
+    };
+  }
+  const found = getPage(pageId);
+  const p = found ?? createPage({ id: pageId });
+  return {
+    page: p,
+    title: p.title,
+    content: p.content,
+    tags: p.tags,
+    slug: p.slug,
+    visibility: p.visibility,
+    status: p.status,
+    versions: getVersions(p.id),
+  };
+}
 
-  const [page, setPage] = useState<Page | null>(null);
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [tags, setTags] = useState<string[]>([]);
+// key={pageId} on this component ensures it remounts whenever the ID changes,
+// so the lazy useState initializer re-runs with fresh data — no setState in effects.
+function EditorInner({ pageId }: { pageId: string | null }) {
+  const router = useRouter();
+
+  const [fields, setFields] = useState<EditorFields>(() => initFields(pageId));
   const [tagInput, setTagInput] = useState('');
-  const [slug, setSlug] = useState('');
-  const [visibility, setVisibility] = useState<'private' | 'public'>('private');
-  const [status, setStatus] = useState<'draft' | 'published' | 'archived'>('draft');
   const [saveState, setSaveState] = useState<SaveState>('saved');
   const [showHistory, setShowHistory] = useState(false);
-  const [versions, setVersions] = useState<PageVersion[]>([]);
+
+  const { page, title, content, tags, slug, visibility, status, versions } = fields;
 
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const slugManuallyEdited = useRef(false);
 
   const wordCount = countWords(content);
 
-  // Load page
+  // Only handles the no-ID redirect — no setState, so no cascading-renders lint error.
   useEffect(() => {
-    let p: Page;
-    if (pageId) {
-      const found = getPage(pageId);
-      p = found ?? createPage({ id: pageId });
-    } else {
-      p = createPage();
+    if (!pageId) {
+      const p = createPage();
       router.replace(`/dashboard/editor?id=${p.id}`);
     }
-    setPage(p);
-    setTitle(p.title);
-    setContent(p.content);
-    setTags(p.tags);
-    setSlug(p.slug);
-    setVisibility(p.visibility);
-    setStatus(p.status);
-    setVersions(getVersions(p.id));
-    slugManuallyEdited.current = false;
   }, [pageId, router]);
 
   const save = useCallback(
@@ -90,14 +124,19 @@ function EditorInner() {
         updatedAt: new Date().toISOString(),
       };
       savePage(updated);
-      setPage(updated);
       if (manual) {
         saveVersion(page.id, updated.title, updated.content);
-        setVersions(getVersions(page.id));
+        setFields((prev) => ({
+          ...prev,
+          page: updated,
+          versions: getVersions(page.id),
+        }));
+      } else {
+        setFields((prev) => ({ ...prev, page: updated }));
       }
       setTimeout(() => setSaveState('saved'), 400);
     },
-    [page, title, content, tags, visibility, status, slug],
+    [page, title, content, tags, visibility, status, slug]
   );
 
   // Auto-save every 10s
@@ -132,7 +171,7 @@ function EditorInner() {
       e.preventDefault();
       const clean = tagInput.trim().replace(/^#/, '');
       if (clean && !tags.includes(clean)) {
-        setTags((t) => [...t, clean]);
+        setFields((prev) => ({ ...prev, tags: [...prev.tags, clean] }));
         markUnsaved();
       }
       setTagInput('');
@@ -140,7 +179,7 @@ function EditorInner() {
   }
 
   function removeTag(tag: string) {
-    setTags((t) => t.filter((x) => x !== tag));
+    setFields((prev) => ({ ...prev, tags: prev.tags.filter((x) => x !== tag) }));
     markUnsaved();
   }
 
@@ -148,11 +187,14 @@ function EditorInner() {
     if (!page || !confirm('Restore this version? Unsaved changes will be lost.')) return;
     const restored = restoreVersion(page.id, versionId);
     if (restored) {
-      setTitle(restored.title);
-      setContent(restored.content);
-      setPage(restored);
+      setFields((prev) => ({
+        ...prev,
+        page: restored,
+        title: restored.title,
+        content: restored.content,
+        versions: getVersions(page.id),
+      }));
       setSaveState('saved');
-      setVersions(getVersions(page.id));
       setShowHistory(false);
     }
   }
@@ -209,7 +251,10 @@ function EditorInner() {
         {/* Visibility */}
         <button
           onClick={() => {
-            setVisibility((v) => (v === 'private' ? 'public' : 'private'));
+            setFields((prev) => ({
+              ...prev,
+              visibility: prev.visibility === 'private' ? 'public' : 'private',
+            }));
             markUnsaved();
           }}
           className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors font-medium ${
@@ -225,7 +270,10 @@ function EditorInner() {
         <select
           value={status}
           onChange={(e) => {
-            setStatus(e.target.value as typeof status);
+            setFields((prev) => ({
+              ...prev,
+              status: e.target.value as EditorFields['status'],
+            }));
             markUnsaved();
           }}
           className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-400"
@@ -250,10 +298,12 @@ function EditorInner() {
           type="text"
           value={title}
           onChange={(e) => {
-            setTitle(e.target.value);
-            if (!slugManuallyEdited.current) {
-              setSlug(slugify(e.target.value));
-            }
+            const newTitle = e.target.value;
+            setFields((prev) => ({
+              ...prev,
+              title: newTitle,
+              slug: slugManuallyEdited.current ? prev.slug : slugify(newTitle),
+            }));
             markUnsaved();
           }}
           placeholder="Page title"
@@ -267,7 +317,10 @@ function EditorInner() {
             value={slug}
             onChange={(e) => {
               slugManuallyEdited.current = true;
-              setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'));
+              setFields((prev) => ({
+                ...prev,
+                slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'),
+              }));
               markUnsaved();
             }}
             placeholder="page-slug"
@@ -303,7 +356,7 @@ function EditorInner() {
             onChange={(e) => setTagInput(e.target.value)}
             onKeyDown={addTag}
             placeholder={tags.length === 0 ? TAGS_PLACEHOLDER : '#tag…'}
-            className="text-xs text-gray-400 placeholder-gray-300 outline-none bg-transparent min-w-[80px]"
+            className="text-xs text-gray-400 placeholder-gray-300 outline-none bg-transparent min-w-20"
           />
         </div>
       </div>
@@ -315,7 +368,7 @@ function EditorInner() {
           <TipTapEditor
             content={content}
             onChange={(html) => {
-              setContent(html);
+              setFields((prev) => ({ ...prev, content: html }));
               markUnsaved();
             }}
             placeholder="Start writing… type / for commands"
@@ -342,10 +395,11 @@ function EditorInner() {
                   <p className="text-xs text-gray-400 leading-relaxed">
                     No checkpoints yet.
                     <br />
-                    Press{' '}
-                    <kbd className="border border-gray-200 rounded px-1 font-mono">⌘S</kbd> or{' '}
-                    <kbd className="border border-gray-200 rounded px-1 font-mono">Save</kbd>{' '}
-                    to create a version.
+                    Press <kbd className="border border-gray-200 rounded px-1 font-mono">
+                      ⌘S
+                    </kbd> or{' '}
+                    <kbd className="border border-gray-200 rounded px-1 font-mono">Save</kbd> to
+                    create a version.
                   </p>
                 </div>
               </div>
@@ -378,6 +432,16 @@ function EditorInner() {
   );
 }
 
+// Reads searchParams here so EditorInner can receive pageId as a plain prop.
+// key={pageId} causes EditorInner to fully remount when the ID changes, which
+// re-runs the lazy useState initializer — cleanly loading the new page with
+// zero setState calls inside any effect body.
+function EditorWrapper() {
+  const searchParams = useSearchParams();
+  const pageId = searchParams.get('id');
+  return <EditorInner key={pageId ?? 'new'} pageId={pageId} />;
+}
+
 export default function EditorPage() {
   return (
     <Suspense
@@ -387,7 +451,7 @@ export default function EditorPage() {
         </div>
       }
     >
-      <EditorInner />
+      <EditorWrapper />
     </Suspense>
   );
 }

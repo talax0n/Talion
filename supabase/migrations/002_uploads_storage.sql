@@ -14,3 +14,9 @@ create table if not exists public.tags (
 
 -- Add sort_order to pages if missing (for drag-and-drop reordering)
 alter table public.pages add column if not exists sort_order int not null default 0;
+
+-- Storage bucket for page asset uploads (images, PDFs, etc.)
+-- Note: Supabase storage buckets are managed via the storage schema
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('page-assets', 'page-assets', true)
+ON CONFLICT (id) DO NOTHING;

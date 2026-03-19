@@ -13,7 +13,13 @@ import {
   Minus,
   Image,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
 
 interface SlashMenuItem {
   label: string;
@@ -113,7 +119,6 @@ export default function SlashMenu({
 
   const selectItem = useCallback(
     (item: SlashMenuItem) => {
-      // Delete the "/" character and any query text before running action
       const { from } = editor.state.selection;
       const slashPos = from - query.length - 1; // -1 for the "/" itself
       editor
@@ -158,26 +163,36 @@ export default function SlashMenu({
   return (
     <div
       ref={menuRef}
-      className="slash-command-menu fixed z-50"
+      className="fixed z-50 w-64 rounded-md border border-gray-200 bg-white shadow-lg"
       style={{ top: position.top, left: position.left }}
     >
-      {filtered.map((item, idx) => (
-        <button
-          key={item.label}
-          className={cn('slash-command-item w-full text-left', idx === selectedIndex && 'is-selected')}
-          onMouseDown={(e) => {
-            e.preventDefault();
-            selectItem(item);
-          }}
-          onMouseEnter={() => setSelectedIndex(idx)}
-        >
-          <span className="slash-command-item-icon">{item.icon}</span>
-          <span className="flex flex-col">
-            <span className="font-medium leading-tight">{item.label}</span>
-            <span className="text-xs opacity-60 leading-tight">{item.description}</span>
-          </span>
-        </button>
-      ))}
+      <Command shouldFilter={false}>
+        <CommandList>
+          <CommandEmpty>No results found.</CommandEmpty>
+          <CommandGroup>
+            {filtered.map((item, idx) => (
+              <CommandItem
+                key={item.label}
+                value={item.label}
+                data-selected={idx === selectedIndex}
+                onMouseEnter={() => setSelectedIndex(idx)}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  selectItem(item);
+                }}
+                onSelect={() => selectItem(item)}
+                className="flex items-center gap-2 cursor-pointer"
+              >
+                <span className="flex-shrink-0 text-gray-500">{item.icon}</span>
+                <span className="flex flex-col min-w-0">
+                  <span className="font-medium leading-tight text-gray-900">{item.label}</span>
+                  <span className="text-xs text-gray-400 leading-tight">{item.description}</span>
+                </span>
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        </CommandList>
+      </Command>
     </div>
   );
 }

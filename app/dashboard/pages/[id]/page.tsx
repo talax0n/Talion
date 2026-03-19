@@ -3,8 +3,8 @@
 import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { getPage, deletePage, type Page } from '@/lib/store';
-import { parseMarkdown } from '@/lib/markdown';
+import { PageBreadcrumb } from '@/components/pages/PageBreadcrumb';
+import type { PageRecord } from '@/lib/pages';
 
 function timeAgo(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();
@@ -23,26 +23,53 @@ const statusColors: Record<string, string> = {
 export default function PageView({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
-  const [page, setPage] = useState<Page | null>(null);
-  const [html, setHtml] = useState('');
+  const [page, setPage] = useState<PageRecord | null>(null);
+  const [allPages, setAllPages] = useState<PageRecord[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const p = getPage(id);
-    if (!p) { router.replace('/dashboard'); return; }
-    setPage(p);
-    setHtml(parseMarkdown(p.content));
+    async function loadPage() {
+      try {
+        const res = await fetch(`/api/pages/${id}`);
+        if (!res.ok) {
+          router.replace('/dashboard');
+          return;
+        }
+        const { page: data } = await res.json() as { page: PageRecord };
+        setPage(data);
+
+        // Load sibling/ancestor pages for breadcrumb — best-effort
+        if (data.workspace_id) {
+          const listRes = await fetch(`/api/pages?workspace_id=${data.workspace_id}`);
+          if (listRes.ok) {
+            const { pages } = await listRes.json() as { pages: PageRecord[] };
+            setAllPages(pages);
+          }
+        }
+      } catch {
+        router.replace('/dashboard');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    void loadPage();
   }, [id, router]);
 
-  function handleDelete() {
-    if (!confirm('Delete this page?')) return;
-    deletePage(id);
+  async function handleDelete() {
+    if (!confirm('Archive this page?')) return;
+    await fetch(`/api/pages/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'archived' }),
+    });
     router.push('/dashboard');
   }
 
-  if (!page) {
+  if (loading || !page) {
     return (
       <div className="h-full flex items-center justify-center text-gray-400 text-sm">
-        Loading…
+        Loading...
       </div>
     );
   }
@@ -51,13 +78,7 @@ export default function PageView({ params }: { params: Promise<{ id: string }> }
     <div className="max-w-3xl mx-auto px-8 py-10">
       {/* Breadcrumb / actions bar */}
       <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-2 text-sm text-gray-400">
-          <Link href="/dashboard" className="hover:text-gray-700 transition-colors">
-            Dashboard
-          </Link>
-          <span>/</span>
-          <span className="text-gray-700 font-medium truncate max-w-xs">{page.title}</span>
-        </div>
+        <PageBreadcrumb page={page} pages={allPages} />
         <div className="flex items-center gap-2">
           <Link
             href={`/dashboard/editor?id=${page.id}`}
@@ -71,7 +92,7 @@ export default function PageView({ params }: { params: Promise<{ id: string }> }
               target="_blank"
               className="text-sm px-3 py-1.5 border border-green-200 rounded-lg text-green-700 bg-green-50 hover:bg-green-100 transition-colors"
             >
-              🌐 View public
+              View public
             </Link>
           )}
           <button
@@ -97,20 +118,24 @@ export default function PageView({ params }: { params: Promise<{ id: string }> }
               : 'bg-gray-100 text-gray-500'
           }`}
         >
-          {page.visibility === 'public' ? '🌐 Public' : '🔒 Private'}
+          {page.visibility === 'public' ? 'Public' : 'Private'}
         </span>
         {page.tags.map((tag) => (
           <span key={tag} className="text-xs bg-indigo-50 text-indigo-600 px-2.5 py-1 rounded-full">
             #{tag}
           </span>
         ))}
-        <span className="text-xs text-gray-400">Updated {timeAgo(page.updatedAt)}</span>
+        <span className="text-xs text-gray-400">Updated {timeAgo(page.updated_at)}</span>
       </div>
 
       {/* Content */}
       <article
         className="prose"
-        dangerouslySetInnerHTML={{ __html: html || '<p class="text-gray-400 italic">This page is empty. Click Edit to start writing.</p>' }}
+        dangerouslySetInnerHTML={{
+          __html:
+            page.content_html ||
+            '<p class="text-gray-400 italic">This page is empty. Click Edit to start writing.</p>',
+        }}
       />
 
       {/* Bottom actions */}
@@ -119,7 +144,7 @@ export default function PageView({ params }: { params: Promise<{ id: string }> }
           onClick={() => router.back()}
           className="text-sm text-gray-400 hover:text-gray-700 transition-colors"
         >
-          ← Back
+          Back
         </button>
         <Link
           href={`/dashboard/editor?id=${page.id}`}
