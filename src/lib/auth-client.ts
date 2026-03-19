@@ -1,0 +1,12 @@
+'use client'
+
+import { createAuthClient } from 'better-auth/react'
+import { magicLinkClient } from 'better-auth/client/plugins'
+
+const authClient = createAuthClient({
+  baseURL: process.env.NEXT_PUBLIC_APP_URL!,
+  plugins: [magicLinkClient()],
+})
+
+export const { useSession, signIn, signOut, signUp } = authClient
+export default authClient

@@ -1,0 +1,175 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Profile {
+  id        String   @id
+  email     String   @unique
+  fullName  String?  @map("full_name")
+  avatarUrl String?  @map("avatar_url")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  workspaces Workspace[]
+  pages      Page[]
+  versions   PageVersion[]
+  comments   Comment[]
+  @@map("profiles")
+}
+
+model Workspace {
+  id           String   @id @default(uuid())
+  ownerId      String   @map("owner_id")
+  name         String
+  slug         String   @unique
+  description  String?
+  visibility   String   @default("private")
+  customDomain String?  @map("custom_domain")
+  theme        Json     @default("{}")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  owner   Profile       @relation(fields: [ownerId], references: [id])
+  pages   Page[]
+  tags    Tag[]
+  groups  AccessGroup[]
+  @@map("workspaces")
+}
+
+model Page {
+  id               String    @id @default(uuid())
+  workspaceId      String    @map("workspace_id")
+  parentId         String?   @map("parent_id")
+  authorId         String    @map("author_id")
+  title            String    @default("Untitled")
+  slug             String
+  contentMd        String    @default("") @map("content_md")
+  contentHtml      String    @default("") @map("content_html")
+  status           String    @default("draft")
+  visibility       String    @default("private")
+  icon             String?
+  coverUrl         String?   @map("cover_url")
+  position         Int       @default(0)
+  frontmatter      Json      @default("{}")
+  vaultPath        String?   @map("vault_path")
+  obsidianSyncedAt DateTime? @map("obsidian_synced_at")
+  obsidianChecksum String?   @map("obsidian_checksum")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  workspace  Workspace     @relation(fields: [workspaceId], references: [id])
+  parent     Page?         @relation("PageTree", fields: [parentId], references: [id])
+  children   Page[]        @relation("PageTree")
+  author     Profile       @relation(fields: [authorId], references: [id])
+  versions   PageVersion[]
+  tags       PageTag[]
+  comments   Comment[]
+  links      PageLink[]    @relation("SourcePage")
+  backlinks  PageLink[]    @relation("TargetPage")
+  access     PageAccess[]
+  @@unique([workspaceId, slug])
+  @@map("pages")
+}
+
+model PageVersion {
+  id        String   @id @default(uuid())
+  pageId    String   @map("page_id")
+  authorId  String   @map("author_id")
+  contentMd String   @map("content_md")
+  createdAt DateTime @default(now()) @map("created_at")
+  page   Page    @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  author Profile @relation(fields: [authorId], references: [id])
+  @@map("page_versions")
+}
+
+model Tag {
+  id          String @id @default(uuid())
+  workspaceId String @map("workspace_id")
+  name        String
+  color       String @default("#6366f1")
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+  pages     PageTag[]
+  @@unique([workspaceId, name])
+  @@map("tags")
+}
+
+model PageTag {
+  pageId String @map("page_id")
+  tagId  String @map("tag_id")
+  page Page @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  @@id([pageId, tagId])
+  @@map("page_tags")
+}
+
+model PageLink {
+  id       String @id @default(uuid())
+  sourceId String @map("source_id")
+  targetId String @map("target_id")
+  source Page @relation("SourcePage", fields: [sourceId], references: [id], onDelete: Cascade)
+  target Page @relation("TargetPage", fields: [targetId], references: [id], onDelete: Cascade)
+  @@unique([sourceId, targetId])
+  @@map("page_links")
+}
+
+model AccessGroup {
+  id          String @id @default(uuid())
+  workspaceId String @map("workspace_id")
+  name        String
+  workspace Workspace           @relation(fields: [workspaceId], references: [id])
+  members   AccessGroupMember[]
+  access    PageAccess[]
+  @@map("access_groups")
+}
+
+model AccessGroupMember {
+  groupId String @map("group_id")
+  userId  String @map("user_id")
+  role    String @default("viewer")
+  group AccessGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  @@id([groupId, userId])
+  @@map("access_group_members")
+}
+
+model PageAccess {
+  id           String    @id @default(uuid())
+  pageId       String    @map("page_id")
+  subjectType  String    @map("subject_type")
+  subjectId    String?   @map("subject_id")
+  role         String    @default("viewer")
+  token        String?   @unique
+  passwordHash String?   @map("password_hash")
+  expiresAt    DateTime? @map("expires_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  page  Page         @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  group AccessGroup? @relation(fields: [subjectId], references: [id])
+  @@map("page_access")
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  pageId    String   @map("page_id")
+  authorId  String   @map("author_id")
+  anchor    String?
+  body      String
+  resolved  Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  page   Page    @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  author Profile @relation(fields: [authorId], references: [id])
+  @@map("comments")
+}
+
+model ObsidianSyncLog {
+  id         String   @id @default(uuid())
+  pageId     String   @map("page_id")
+  vaultPath  String   @map("vault_path")
+  direction  String
+  status     String
+  conflictMd String?  @map("conflict_md")
+  message    String?
+  syncedAt   DateTime @default(now()) @map("synced_at")
+  @@map("obsidian_sync_log")
+}
