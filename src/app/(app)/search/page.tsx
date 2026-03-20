@@ -69,7 +69,8 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   }
 
   return (
-    <div className="p-6 max-w-3xl">
+    <div className="p-6 md:p-10 max-w-5xl mx-auto">
+      <h1 className="text-3xl font-bold tracking-tight mb-8">Search</h1>
       <SearchResults results={results as any} query={q} />
     </div>
   )

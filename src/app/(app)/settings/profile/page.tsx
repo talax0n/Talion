@@ -11,13 +11,15 @@ export default async function ProfilePage() {
   const profile = await prisma.profile.findUnique({ where: { email: session.user.email } })
 
   return (
-    <div className="p-6 max-w-2xl">
-      <h1 className="text-2xl font-bold mb-6">Profile</h1>
-      <ProfileForm
-        initialFullName={profile?.fullName ?? ''}
-        initialAvatarUrl={profile?.avatarUrl ?? ''}
-        email={session.user.email}
-      />
+    <div className="p-6 md:p-10 max-w-5xl mx-auto">
+      <h1 className="text-3xl font-bold tracking-tight mb-8">Profile</h1>
+      <div className="max-w-2xl">
+        <ProfileForm
+          initialFullName={profile?.fullName ?? ''}
+          initialAvatarUrl={profile?.avatarUrl ?? ''}
+          email={session.user.email}
+        />
+      </div>
     </div>
   )
 }

@@ -50,7 +50,7 @@ export function SidebarNav() {
   const pathname = usePathname()
 
   return (
-    <nav className="space-y-1">
+    <nav className="space-y-0.5">
       {navItems.map((item) => {
         const Icon = item.icon
         const active = item.isActive(pathname)
@@ -58,7 +58,10 @@ export function SidebarNav() {
           <Button
             key={item.href}
             variant={active ? 'secondary' : 'ghost'}
-            className={cn('w-full justify-start gap-2', active && 'font-medium')}
+            className={cn(
+              'w-full justify-start gap-2 h-8 px-2 text-sm font-medium',
+              active ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+            )}
             asChild
           >
             <Link href={item.href}>

@@ -70,12 +70,12 @@ export default async function DashboardPage() {
   )
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold">
+    <div className="p-6 md:p-10 max-w-6xl mx-auto">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold tracking-tight">
           Welcome back, {profile.fullName ?? session.user.email}
         </h1>
-        <p className="text-muted-foreground mt-1">{workspace.name}</p>
+        <p className="text-muted-foreground mt-1.5">{workspace.name}</p>
       </div>
 
       <StatsRow
@@ -84,11 +84,11 @@ export default async function DashboardPage() {
         totalMembers={totalMembers}
       />
 
-      <div className="grid grid-cols-5 gap-6 mt-6">
-        <div className="col-span-3 flex flex-col gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-8 mt-8">
+        <div className="md:col-span-3 flex flex-col gap-8">
           <RecentPages pages={recentPages as any} />
         </div>
-        <div className="col-span-2 flex flex-col gap-6">
+        <div className="md:col-span-2 flex flex-col gap-8">
           <QuickActions workspaceId={workspace.id} />
           <ActivitySnapshot activity={recentActivity as any} />
         </div>

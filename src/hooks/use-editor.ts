@@ -10,6 +10,7 @@ export function useEditor(content: string, onChange: (md: string) => void) {
   const editor = useTipTapEditor({
     extensions: getExtensions(),
     content,
+    immediatelyRender: false,
     onUpdate({ editor }) {
       onChange(editor.getText())
     },

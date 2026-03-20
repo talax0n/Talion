@@ -21,18 +21,18 @@ interface SidebarProps {
 
 function SidebarContent({ user }: { user: SidebarProps['user'] }) {
   return (
-    <div className="flex h-full flex-col bg-background border-r">
-      <div className="flex h-14 items-center px-4 border-b">
-        <span className="font-semibold text-lg">Talion</span>
+    <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
+      <div className="flex h-14 items-center px-4 border-b border-sidebar-border/50">
+        <span className="font-semibold text-lg tracking-tight">Talion</span>
       </div>
-      <div className="px-3 py-3 border-b">
+      <div className="px-3 py-3 border-b border-sidebar-border/50">
         <WorkspaceSwitcher />
       </div>
       <ScrollArea className="flex-1 px-2 py-4">
         <SidebarNav />
       </ScrollArea>
       <div className="p-2">
-        <Separator className="mb-2" />
+        <Separator className="mb-2 bg-sidebar-border/50" />
         <div className="flex items-center justify-between px-2">
           <ThemeToggle />
           <UserMenu user={user} />

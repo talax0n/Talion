@@ -15,15 +15,15 @@ interface TopNavProps {
 
 export function TopNav({ user: _user, onMenuClick }: TopNavProps) {
   return (
-    <header className="flex h-14 items-center border-b px-4 gap-4">
+    <header className="flex h-12 items-center bg-background px-4 gap-4 sticky top-0 z-10">
       <Button
         variant="ghost"
         size="icon"
-        className="md:hidden"
+        className="md:hidden h-8 w-8 text-muted-foreground hover:text-foreground"
         onClick={onMenuClick}
         aria-label="Open menu"
       >
-        <Menu className="h-5 w-5" />
+        <Menu className="h-4 w-4" />
       </Button>
       <div className="flex-1">
         <AppBreadcrumb />

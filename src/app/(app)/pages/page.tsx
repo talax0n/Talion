@@ -33,9 +33,9 @@ export default async function PagesPage() {
   }
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Pages</h1>
+    <div className="p-6 md:p-10 max-w-5xl mx-auto">
+      <div className="flex items-center justify-between mb-8">
+        <h1 className="text-3xl font-bold tracking-tight">Pages</h1>
       </div>
       <PageList workspaceId={workspace.id} />
     </div>
