@@ -6,6 +6,7 @@ import { Separator } from '@/components/ui/separator'
 import { ThemeToggle } from '@/components/theme/ThemeToggle'
 import { UserMenu } from '@/components/shell/UserMenu'
 import { SidebarNav } from '@/components/shell/SidebarNav'
+import { WorkspaceSwitcher } from '@/components/workspace/WorkspaceSwitcher'
 
 interface SidebarProps {
   user: {
@@ -23,6 +24,9 @@ function SidebarContent({ user }: { user: SidebarProps['user'] }) {
     <div className="flex h-full flex-col bg-background border-r">
       <div className="flex h-14 items-center px-4 border-b">
         <span className="font-semibold text-lg">Talion</span>
+      </div>
+      <div className="px-3 py-3 border-b">
+        <WorkspaceSwitcher />
       </div>
       <ScrollArea className="flex-1 px-2 py-4">
         <SidebarNav />

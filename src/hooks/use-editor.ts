@@ -20,8 +20,10 @@ export function useEditor(content: string, onChange: (md: string) => void) {
     },
   })
 
-  const wordCount = editor?.storage?.characterCount?.words() ??
-    (editor?.getText().split(/\s+/).filter(Boolean).length ?? 0)
+  const wordCount =
+    editor?.storage?.characterCount?.words() ??
+    editor?.getText().split(/\s+/).filter(Boolean).length ??
+    0
   const isEmpty = editor?.isEmpty ?? true
 
   return { editor, mode, setMode, wordCount, isEmpty }

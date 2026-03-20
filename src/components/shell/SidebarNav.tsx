@@ -2,15 +2,48 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, FileText, Settings, Users } from 'lucide-react'
+import { LayoutDashboard, FileText, Settings, Users, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
-const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/pages', label: 'Pages', icon: FileText },
-  { href: '/members', label: 'Members', icon: Users },
-  { href: '/settings', label: 'Settings', icon: Settings },
+type NavItem = {
+  href: string
+  label: string
+  icon: React.ElementType
+  isActive: (pathname: string) => boolean
+}
+
+const navItems: NavItem[] = [
+  {
+    href: '/dashboard',
+    label: 'Dashboard',
+    icon: LayoutDashboard,
+    isActive: (pathname) => pathname === '/dashboard',
+  },
+  {
+    href: '/pages',
+    label: 'Pages',
+    icon: FileText,
+    isActive: (pathname) => pathname.startsWith('/pages'),
+  },
+  {
+    href: '/members',
+    label: 'Members',
+    icon: Users,
+    isActive: (pathname) => pathname === '/members',
+  },
+  {
+    href: '/search',
+    label: 'Search',
+    icon: Search,
+    isActive: (pathname) => pathname === '/search',
+  },
+  {
+    href: '/settings/profile',
+    label: 'Settings',
+    icon: Settings,
+    isActive: (pathname) => pathname.startsWith('/settings'),
+  },
 ]
 
 export function SidebarNav() {
@@ -20,12 +53,12 @@ export function SidebarNav() {
     <nav className="space-y-1">
       {navItems.map((item) => {
         const Icon = item.icon
-        const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+        const active = item.isActive(pathname)
         return (
           <Button
             key={item.href}
-            variant={isActive ? 'secondary' : 'ghost'}
-            className={cn('w-full justify-start gap-2', isActive && 'font-medium')}
+            variant={active ? 'secondary' : 'ghost'}
+            className={cn('w-full justify-start gap-2', active && 'font-medium')}
             asChild
           >
             <Link href={item.href}>

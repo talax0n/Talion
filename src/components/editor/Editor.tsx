@@ -8,7 +8,12 @@ import { Button } from '@/components/ui/button'
 import { Code, Eye } from 'lucide-react'
 import type { EditorProps } from '@/types/editor'
 
-export function Editor({ content, onChange, mode: _initialMode = 'wysiwyg', readOnly = false }: EditorProps) {
+export function Editor({
+  content,
+  onChange,
+  mode: _initialMode = 'wysiwyg',
+  readOnly = false,
+}: EditorProps) {
   const { editor, mode, setMode, wordCount } = useEditor(content, onChange)
   const [markdownContent, setMarkdownContent] = useState(content)
   const [slashMenuOpen, setSlashMenuOpen] = useState(false)
@@ -18,15 +23,18 @@ export function Editor({ content, onChange, mode: _initialMode = 'wysiwyg', read
     setMarkdownContent(content)
   }, [content])
 
-  const handleMarkdownChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const val = e.target.value
-    setMarkdownContent(val)
-    onChange(val)
-  }, [onChange])
+  const handleMarkdownChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const val = e.target.value
+      setMarkdownContent(val)
+      onChange(val)
+    },
+    [onChange]
+  )
 
   useEffect(() => {
     if (!editor || mode !== 'wysiwyg') return
-    const handleKeyUp = (e: KeyboardEvent) => {
+    const handleKeyUp = () => {
       const { state } = editor
       const { $from } = state.selection
       const textBefore = $from.nodeBefore?.text ?? ''
@@ -84,9 +92,7 @@ export function Editor({ content, onChange, mode: _initialMode = 'wysiwyg', read
         )}
       </div>
       {!readOnly && (
-        <div className="px-4 py-1 border-t text-xs text-muted-foreground">
-          {wordCount} words
-        </div>
+        <div className="px-4 py-1 border-t text-xs text-muted-foreground">{wordCount} words</div>
       )}
     </div>
   )

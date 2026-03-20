@@ -3,6 +3,7 @@ import { headers } from 'next/headers'
 import { auth } from '@/lib/auth'
 import { AppShell } from '@/components/shell/AppShell'
 import { WorkspaceProvider } from '@/contexts/WorkspaceContext'
+import { GlobalSearch } from '@/components/search/GlobalSearch'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth.api.getSession({
@@ -15,9 +16,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <WorkspaceProvider>
-      <AppShell user={session.user}>
-        {children}
-      </AppShell>
+      <GlobalSearch>
+        <AppShell user={session.user}>
+          {children}
+        </AppShell>
+      </GlobalSearch>
     </WorkspaceProvider>
   )
 }

@@ -36,6 +36,7 @@ model Workspace {
   pages   Page[]
   tags    Tag[]
   groups  AccessGroup[]
+  members WorkspaceMember[]
   @@map("workspaces")
 }
 
@@ -172,6 +173,17 @@ model ObsidianSyncLog {
   message    String?
   syncedAt   DateTime @default(now()) @map("synced_at")
   @@map("obsidian_sync_log")
+}
+
+model WorkspaceMember {
+  workspaceId String   @map("workspace_id")
+  userId      String   @map("user_id")
+  role        String   @default("viewer")
+  invitedBy   String?  @map("invited_by")
+  joinedAt    DateTime @default(now()) @map("joined_at")
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  @@id([workspaceId, userId])
+  @@map("workspace_members")
 }
 
 // ── Better Auth tables ────────────────────────────────────────────────────────

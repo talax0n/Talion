@@ -18,22 +18,42 @@ export const auth = betterAuth({
       },
     }),
   ],
-  callbacks: {
-    async session({ session, user }: { session: any; user: any }) {
-      // Sync user into profiles table on each session
-      await prisma.profile.upsert({
-        where: { id: user.id },
-        update: {
-          email: user.email,
-          updatedAt: new Date(),
+  databaseHooks: {
+    user: {
+      create: {
+        after: async (user) => {
+          await prisma.profile.upsert({
+            where: { id: user.id },
+            update: {
+              email: user.email,
+              fullName: user.name ?? null,
+              updatedAt: new Date(),
+            },
+            create: {
+              id: user.id,
+              email: user.email,
+              fullName: user.name ?? null,
+            },
+          })
         },
-        create: {
-          id: user.id,
-          email: user.email,
-          fullName: user.name ?? null,
+      },
+      update: {
+        after: async (user) => {
+          await prisma.profile.upsert({
+            where: { id: user.id },
+            update: {
+              email: user.email,
+              fullName: user.name ?? null,
+              updatedAt: new Date(),
+            },
+            create: {
+              id: user.id,
+              email: user.email,
+              fullName: user.name ?? null,
+            },
+          })
         },
-      })
-      return session
+      },
     },
   },
 })

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   CommandDialog,
@@ -10,92 +10,101 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command'
-import { useSearch } from '@/hooks/use-search'
+import { FileText } from 'lucide-react'
 
-interface SearchModalProps {
-  workspaceId: string
-  workspaceSlug: string
+interface SearchResult {
+  id: string
+  title: string
+  slug: string
+  excerpt: string
+  status: string
 }
 
-export function SearchModal({ workspaceId, workspaceSlug }: SearchModalProps) {
-  const [open, setOpen] = useState(false)
+interface SearchModalProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}
+
+export function SearchModal({ open, onOpenChange }: SearchModalProps) {
   const router = useRouter()
-  const { query, setQuery, results, isLoading } = useSearch(workspaceId)
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState<SearchResult[]>([])
+  const [loading, setLoading] = useState(false)
 
-  // Cmd+K keyboard shortcut
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault()
-        setOpen((prev) => !prev)
-      }
+  const search = useCallback(async (q: string) => {
+    if (!q.trim()) {
+      setResults([])
+      return
     }
-
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`)
+      const data = await res.json()
+      setResults(data.results ?? data ?? [])
+    } catch {
+      setResults([])
+    } finally {
+      setLoading(false)
+    }
   }, [])
+
+  useEffect(() => {
+    const timer = setTimeout(() => search(query), 300)
+    return () => clearTimeout(timer)
+  }, [query, search])
 
   // Reset query when modal closes
   useEffect(() => {
     if (!open) {
       setQuery('')
+      setResults([])
     }
-  }, [open, setQuery])
+  }, [open])
 
-  function handleSelect(slug: string) {
-    setOpen(false)
-    router.push(`/${workspaceSlug}/${slug}`)
+  function handleSelect(pageId: string) {
+    onOpenChange(false)
+    setQuery('')
+    router.push(`/pages/${pageId}`)
   }
 
   return (
-    <>
-      {/* Trigger hint */}
-      <button
-        onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-2 rounded-md border border-input bg-background px-3 py-1.5 text-sm text-muted-foreground shadow-sm hover:bg-accent hover:text-accent-foreground"
-        aria-label="Open search"
-        type="button"
-      >
-        <span>Search...</span>
-        <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
-          <span className="text-xs">⌘</span>K
-        </kbd>
-      </button>
-
-      <CommandDialog open={open} onOpenChange={setOpen}>
-        <CommandInput
-          placeholder="Search pages..."
-          value={query}
-          onValueChange={setQuery}
-        />
-        <CommandList>
-          {isLoading && (
-            <CommandEmpty>Searching...</CommandEmpty>
-          )}
-          {!isLoading && query.trim() && results.length === 0 && (
-            <CommandEmpty>No results found.</CommandEmpty>
-          )}
-          {!isLoading && results.length > 0 && (
-            <CommandGroup heading="Pages">
-              {results.map((result) => (
-                <CommandItem
-                  key={result.id}
-                  value={result.id}
-                  onSelect={() => handleSelect(result.slug)}
-                  className="flex flex-col items-start gap-0.5"
-                >
-                  <span className="font-medium">{result.title}</span>
-                  {result.excerpt && (
-                    <span className="line-clamp-1 text-xs text-muted-foreground">
-                      {result.excerpt}
-                    </span>
-                  )}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          )}
-        </CommandList>
-      </CommandDialog>
-    </>
+    <CommandDialog open={open} onOpenChange={onOpenChange}>
+      <CommandInput
+        placeholder="Search pages..."
+        value={query}
+        onValueChange={setQuery}
+      />
+      <CommandList>
+        {loading && <CommandEmpty>Searching...</CommandEmpty>}
+        {!loading && query && results.length === 0 && (
+          <CommandEmpty>No pages found for &ldquo;{query}&rdquo;</CommandEmpty>
+        )}
+        {!loading && !query && (
+          <CommandEmpty>Type to search pages...</CommandEmpty>
+        )}
+        {results.length > 0 && (
+          <CommandGroup heading="Pages">
+            {results.map(page => (
+              <CommandItem
+                key={page.id}
+                value={page.id}
+                onSelect={() => handleSelect(page.id)}
+                className="flex flex-col items-start gap-0.5"
+              >
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <span className="font-medium">{page.title}</span>
+                </div>
+                {page.excerpt && (
+                  <span className="line-clamp-1 text-xs text-muted-foreground pl-6">
+                    {page.excerpt}
+                  </span>
+                )}
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        )}
+      </CommandList>
+    </CommandDialog>
   )
 }
